@@ -55,7 +55,11 @@ class ConsoleData {
     * Sets a single character position
     */
    public void setDataAt(int column, int row, char c, Color fg, Color bg) {
-      int pos = column + row * columns;
+      int pos;
+      if (row < 0 || row >= rows || column < 0 || column >= columns) {
+         return;
+      }
+      pos = column + row * columns;
       text[pos] = c;
       foreground[pos] = fg;
       background[pos] = bg;
@@ -64,6 +68,11 @@ class ConsoleData {
    public char getCharAt(int column, int row) {
       int offset = column + row * columns;
       return text[offset];
+   }
+
+   public char[] getCharsRow(int row) {
+      final int offset = row * columns;
+      return Arrays.copyOfRange(text, offset, offset + columns);
    }
 
    public Color getForegroundAt(int column, int row) {

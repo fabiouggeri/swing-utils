@@ -5,7 +5,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.HierarchyEvent;
@@ -16,7 +16,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import javax.imageio.ImageIO;
+import java.nio.charset.Charset;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
@@ -52,6 +52,9 @@ public class Console extends JPanel implements HierarchyListener {
    private BufferedImage image;
 
    private Timer blinkTimer;
+   
+   private Charset charset = Charset.forName("IBM-850");
+
 
    public Console(int columns, int rows) {
       configure(columns, rows);
@@ -131,13 +134,18 @@ public class Console extends JPanel implements HierarchyListener {
       super.removeNotify();
    }
 
-   public void setRows(int rows) {
-      setSize(this.data.columns * fontWidth, rows * fontHeight);
+   public void setRowsColumns(int rows, int cols) {
+      data.init(cols, rows, currentBackground, currentForeground);
+      setSize(data.columns * fontWidth, rows * fontHeight);
    }
 
+   public void setRows(int rows) {
+      data.init(data.columns, rows, currentBackground, currentForeground);
+      setSize(data.columns * fontWidth, rows * fontHeight);
+   }
 
    public void setFontSize(final int newSize) {
-      setFont(currentFont.deriveFont((float)newSize));
+      setFont(currentFont.deriveFont((float) newSize));
    }
 
    @Override
@@ -148,10 +156,10 @@ public class Console extends JPanel implements HierarchyListener {
 
    private void resize() {
       final FontRenderContext fontRenderContext = new FontRenderContext(currentFont.getTransform(), false, false);
-      final Rectangle2D charBounds = currentFont.getStringBounds("X",fontRenderContext);
+      final Rectangle2D charBounds = currentFont.getStringBounds("X", fontRenderContext);
       fontWidth = (int) charBounds.getWidth();
       fontHeight = (int) charBounds.getHeight();
-  		fontYOffset = -(int) charBounds.getMinY();
+      fontYOffset = -(int) charBounds.getMinY();
 
       if (data != null) {
          setPreferredSize(new Dimension(data.columns * fontWidth, (data.rows * fontHeight) + fontYOffset));
@@ -168,6 +176,7 @@ public class Console extends JPanel implements HierarchyListener {
    }
 
    public void setColumns(int columns) {
+      data.init(columns, data.rows, currentBackground, currentForeground);
       setSize(columns * fontWidth, this.data.rows * fontHeight);
    }
 
@@ -185,6 +194,7 @@ public class Console extends JPanel implements HierarchyListener {
 
    /**
     * Fires a repaint event on a specified rectangle of characters in the console
+    *
     * @param column
     * @param row
     * @param width
@@ -232,37 +242,80 @@ public class Console extends JPanel implements HierarchyListener {
 
    private void drawImage() {
       final BufferedImage img = getImage();
-      final Graphics2D graphic = (Graphics2D) img.getGraphics();
-      final char chars[] = new char[1];
-
+      final Graphics2D graphic;
+      if (img == null) {
+         return;
+      }
+      graphic = (Graphics2D) img.getGraphics();
+//      graphic.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+//      graphic.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+      graphic.setFont(currentFont);
+      graphic.clearRect(0, 0, img.getWidth(), img.getHeight());
       for (int row = 0; row < data.rows; row++) {
-         for (int col = 0; col < data.columns; col++) {
-            final int x;
-            final int y;
-            Color bgColor = data.getBackgroundAt(col, row);
-            Color fgColor = data.getForegroundAt(col, row);
-            chars[0] = data.getCharAt(col, row);
-            if (col == cursorX && row == cursorY && cursorVisible && cursorBlinkOn && cursorInverted) {
-               // swap foreground and background colours
-               Color tmpColor = fgColor;
-               fgColor = bgColor;
-               bgColor = tmpColor;
-            }
-            // set font
-            graphic.setFont(currentFont);
-
-            x = col * fontWidth;
-            y = fontYOffset + (row * fontHeight);
-            // draw background
-            graphic.setBackground(bgColor);
-            graphic.clearRect(x, y, x + fontWidth, y + fontHeight);
-
-            // draw chars up to this point
-            graphic.setColor(fgColor);
-            graphic.drawChars(chars, 0, 1, x, y);
-         }
+         drawLine(graphic, row);
       }
    }
+
+   private void drawLine(final Graphics2D graphic, int row) {
+      final char chars[] = new char[1];
+      final String text;
+      final int textLen;
+      if (charset != null) {
+         text = new String(new String(data.getCharsRow(row)).getBytes(), charset);
+      } else {
+         text = new String(new String(data.getCharsRow(row)).getBytes());
+      }
+      textLen = text.length();
+      for (int col = 0; col < textLen; col++) {
+         final int x = col * fontWidth;
+         final int y = row * fontHeight;
+         Color bgColor = data.getBackgroundAt(col, row);
+         Color fgColor = data.getForegroundAt(col, row);
+         if (col == cursorX && row == cursorY && cursorVisible && cursorBlinkOn && cursorInverted) {
+            // swap foreground and background colours
+            final Color tmpColor = fgColor;
+            fgColor = bgColor;
+            bgColor = tmpColor;
+         }
+         graphic.setBackground(bgColor);
+         graphic.setColor(bgColor);
+         graphic.setClip(x, y, fontWidth, fontHeight);
+         graphic.fillRect(x, y, fontWidth, fontHeight);
+         graphic.setColor(fgColor);
+         chars[0] = text.charAt(col);
+         graphic.drawChars(chars, 0, 1, x, y + fontHeight - graphic.getFontMetrics().getDescent() + 1);
+      }
+   }
+//   private void drawLine(final Graphics2D graphic, int row) {
+//      final char chars[] = new char[1];
+//      for (int col = 0; col < data.columns; col++) {
+//         final int x;
+//         final int y;
+//         Color bgColor = data.getBackgroundAt(col, row);
+//         Color fgColor = data.getForegroundAt(col, row);
+//         chars[0] = data.getCharAt(col, row);
+//         if (col == cursorX && row == cursorY && cursorVisible && cursorBlinkOn && cursorInverted) {
+//            // swap foreground and background colours
+//            Color tmpColor = fgColor;
+//            fgColor = bgColor;
+//            bgColor = tmpColor;
+//         }
+//         // set font
+//         graphic.setFont(currentFont);
+//         
+//         x = col * fontWidth;
+//         y = row * fontHeight;;
+//         graphic.setColor(bgColor);
+//         graphic.setClip(x, y, fontWidth, fontHeight);
+//         graphic.fillRect(x, y, fontWidth, fontHeight);
+//         graphic.setColor(fgColor);
+//         if (charset != null) {
+//            graphic.drawString(new String(new String(chars).getBytes(), charset), x, y + fontHeight - graphic.getFontMetrics().getDescent() + 1);
+//         } else {
+//            graphic.drawChars(chars, 0, 1, x, y + fontHeight - graphic.getFontMetrics().getDescent() + 1);
+//         }
+//      }
+//   }
 
    @Override
    public void paintComponent(Graphics graphics) {
@@ -328,7 +381,7 @@ public class Console extends JPanel implements HierarchyListener {
       final PrintStream ps = new PrintStream(new OutputStream() {
          @Override
          public void write(int b) throws IOException {
-            print((char)b);
+            print((char) b);
          }
       });
       System.setOut(ps);
@@ -341,7 +394,7 @@ public class Console extends JPanel implements HierarchyListener {
       final PrintStream ps = new PrintStream(new OutputStream() {
          @Override
          public void write(int b) throws IOException {
-            print((char)b);
+            print((char) b);
          }
       });
       System.setErr(ps);
@@ -349,6 +402,17 @@ public class Console extends JPanel implements HierarchyListener {
 
    public void print(char c) {
       data.setDataAt(cursorX, cursorY, c, currentForeground, currentBackground);
+      moveCursor(c);
+   }
+
+   public void print(int row, int col, char c, Color foreGround, Color backGround) {
+      data.setDataAt(col, row, c, foreGround, backGround);
+      setCursorPos(row, col);
+      moveCursor(c);
+   }
+
+   public void print(char c, Color foreGround, Color backGround) {
+      data.setDataAt(cursorX, cursorY, c, foreGround, backGround);
       moveCursor(c);
    }
 
@@ -414,6 +478,18 @@ public class Console extends JPanel implements HierarchyListener {
             stopBlinking();
          }
       }
+   }
+
+   public Charset getCharset() {
+      return charset;
+   }
+
+   public void setCharset(Charset charset) {
+      this.charset = charset;
+   }
+
+   public void setCharset(final String charset) {
+      this.charset = Charset.forName(charset);
    }
 
 }

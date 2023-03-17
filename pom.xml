@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+   <modelVersion>4.0.0</modelVersion>
+
+   <groupId>org.swing-utils</groupId>
+   <artifactId>swing-utils</artifactId>
+   <version>1.0.0.0</version>
+   <packaging>jar</packaging>
+
+   <name>Swing-utils components</name>
+   <description>A set of useful swing components</description>
+
+   <developers>
+      <developer>
+         <id>fabiouggeri</id>
+         <name>Fabio Uggeri</name>
+         <email>fabiouggeri@gmail.com</email>
+         <roles>
+            <role>Developer</role>
+         </roles>
+      </developer>
+   </developers>
+
+   <url>https://gitlab.com/fabiouggeri/swing-utils.git</url>
+
+   <licenses>
+      <license>
+         <name>Apache License, Version 2.0</name>
+         <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+         <distribution>repo</distribution>
+      </license>
+   </licenses>
+
+   <properties>
+      <maven-version>3.3.3</maven-version>
+   </properties>
+
+   <dependencies>
+      <dependency>
+         <groupId>org.swinglabs.swingx</groupId>
+         <artifactId>swingx-all</artifactId>
+         <version>1.6.5-1</version>
+      </dependency>
+      <dependency>
+         <groupId>com.fifesoft</groupId>
+         <artifactId>rsyntaxtextarea</artifactId>
+         <version>3.3.0</version>
+      </dependency>
+   </dependencies>
+
+   <build>
+      <plugins>
+         <plugin>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.3</version>
+            <configuration>
+               <source>11</source>
+               <target>11</target>
+            </configuration>
+         </plugin>
+      </plugins>
+   </build>
+
+</project>
